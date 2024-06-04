@@ -24,6 +24,9 @@ class TCPClient:
             res.append(each_byte)
             total_bytes -= each_byte
 
+        for i in range(1, len(res)):
+            res[i] += res[i - 1]
+
         return res
 
     def __init__(
@@ -40,16 +43,9 @@ class TCPClient:
         with open(Settings.FILE_NAME, "r") as file:
             self.original_file = file.read()
 
-        total_bytes, self.remain_bits = divmod(len(self.original_file), 8)
-
-        self.blocks_to_send = list(
-            map(
-                lambda x: x * 8,
-                TCPClient.__calculate_bytes(min_bytes, max_bytes, total_bytes),
-            )
+        self.blocks_to_send = TCPClient.__calculate_bytes(
+            min_bytes, max_bytes, len(self.original_file)
         )
-        for i in range(1, len(self.blocks_to_send)):
-            self.blocks_to_send[i] += self.blocks_to_send[i - 1]
 
         self.re_file_name = f"files/{shortuuid.random(Settings.UUID_LEN)}_client.txt"
         self.reversed_file = open(self.re_file_name, "a")
@@ -60,7 +56,7 @@ class TCPClient:
 
     def _confirm_agreement(self) -> bool:
         agreement = CustomPackets(PacketType.agreement)
-        ack = self.client.recv(Settings.TYPE_NUM * 8)
+        ack = self.client.recv(Settings.TYPE_NUM)
         return agreement.decode_from_bytes(ack)[0] == PacketType.agreement.value
 
     def _send_raw_data(self):
@@ -70,9 +66,10 @@ class TCPClient:
 
         for i in range(len(self.blocks_to_send)):
             bits_to_send = self.blocks_to_send[i]
+
             msg_to_send = self.original_file[already_sent_bits:bits_to_send]
             msg_to_send = request_req.generate_packet_bytes(
-                length=bits_to_send // 8, data=msg_to_send
+                length=(bits_to_send - already_sent_bits), data=msg_to_send
             )
 
             self.client.send(msg_to_send)
@@ -85,19 +82,6 @@ class TCPClient:
             self.reversed_file.flush()
 
             already_sent_bits = bits_to_send
-
-        msg_to_send = self.original_file[-self.remain_bits : :]
-        msg_to_send = request_ans.generate_packet_bytes(
-            length=self.remain_bits // 8, data=msg_to_send
-        )
-
-        self.client.send(msg_to_send)
-        reversed_raw_data = self.client.recv(len(msg_to_send))
-        reversed_data = request_req.decode_from_bytes(reversed_raw_data)[-1]
-        print(f"No.{i+1}:".ljust(7), reversed_data)
-
-        self.reversed_file.write(reversed_data)
-        self.reversed_file.flush()
 
     def run(self):
         print("Client starts")

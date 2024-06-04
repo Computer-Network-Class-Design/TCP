@@ -37,22 +37,19 @@ class PacketType(Enum):
 
 class CustomPackets:
     @staticmethod
-    def _to_binary(val: int, length: int) -> str:
-        bin_val = bin(val)[2:]
-        if len(bin_val) < length * 8:
-            return "0" * (length * 8 - len(bin_val)) + bin_val
-        return bin_val
+    def __format(val: int, length: int) -> str:
+        str_val = str(val)
+        if len(str_val) < length:
+            return "0" * (length - len(str_val)) + str_val
 
     def __init__(self, packet_type: PacketType):
         self.__type = packet_type
-        self.packet_type = CustomPackets._to_binary(
-            packet_type.value, Settings.TYPE_NUM
-        )
+        self.packet_type = CustomPackets.__format(packet_type.value, Settings.TYPE_NUM)
 
     def generate_packet_bytes(self, *, N=None, length=None, data=None):
         if self.__type == PacketType.initialize:
             msg_to_send = (
-                f"{self.packet_type}{CustomPackets._to_binary(N, Settings.LEN_OR_N)}"
+                f"{self.packet_type}{CustomPackets.__format(N, Settings.LEN_OR_N)}"
             )
         if self.__type == PacketType.agreement:
             msg_to_send = self.packet_type
@@ -60,22 +57,21 @@ class CustomPackets:
             self.__type == PacketType.reverse_req
             or self.__type == PacketType.reverse_ans
         ):
-            msg_to_send = f"{self.packet_type}{CustomPackets._to_binary(length, Settings.LEN_OR_N)}{data}"
+            msg_to_send = f"{self.packet_type}{CustomPackets.__format(length, Settings.LEN_OR_N)}{data}"
 
         return msg_to_send.encode(Settings.FORMAT)
 
     def decode_from_bytes(self, data: bytes):
         decoded_data = data.decode(Settings.FORMAT)
-        type_num = int(decoded_data[: Settings.TYPE_NUM * 8], 2)
+        type_num = int(decoded_data[: Settings.TYPE_NUM])
 
         if self.__type == PacketType.agreement:
             return (type_num,)
         if self.__type == PacketType.initialize:
             N = int(
                 decoded_data[
-                    Settings.TYPE_NUM * 8 : (Settings.TYPE_NUM + Settings.LEN_OR_N) * 8
-                ],
-                2,
+                    Settings.TYPE_NUM : (Settings.TYPE_NUM + Settings.LEN_OR_N)
+                ]
             )
             return (type_num, N)
 
@@ -85,11 +81,10 @@ class CustomPackets:
         ):
             length = int(
                 decoded_data[
-                    Settings.TYPE_NUM * 8 : (Settings.TYPE_NUM + Settings.LEN_OR_N) * 8
-                ],
-                2,
+                    Settings.TYPE_NUM : (Settings.TYPE_NUM + Settings.LEN_OR_N)
+                ]
             )
-            raw_data = decoded_data[(Settings.TYPE_NUM + Settings.LEN_OR_N) * 8 :]
+            raw_data = decoded_data[(Settings.TYPE_NUM + Settings.LEN_OR_N) :]
 
             return (type_num, length, raw_data)
 

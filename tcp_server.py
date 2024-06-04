@@ -19,7 +19,7 @@ class TCPServer:
         agreement = CustomPackets(PacketType.agreement)
 
         info = initialize.decode_from_bytes(
-            conn.recv((Settings.TYPE_NUM + Settings.LEN_OR_N) * 8)
+            conn.recv((Settings.TYPE_NUM + Settings.LEN_OR_N))
         )
         self.blocks_to_send = info[-1]
 
@@ -29,9 +29,9 @@ class TCPServer:
         reverse_req = CustomPackets(PacketType.reverse_req)
         reverse_ans = CustomPackets(PacketType.reverse_ans)
 
-        for _ in range(self.blocks_to_send + 1):
+        for _ in range(self.blocks_to_send):
             info = conn.recv(
-                (Settings.TYPE_NUM + Settings.LEN_OR_N) * 8 + len(self.original_file)
+                (Settings.TYPE_NUM + Settings.LEN_OR_N) + len(self.original_file)
             )
             print(info)
             _, length, data = reverse_req.decode_from_bytes(info)
