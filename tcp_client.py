@@ -11,6 +11,7 @@ from util import CustomPackets, PacketType, CustomArgParser
 
 
 class TCPClient:
+    # A utility function for randomly generating blocks
     @staticmethod
     def __calculate_bytes(
         min_bytes: int, max_bytes: int, total_bytes: int
@@ -50,15 +51,18 @@ class TCPClient:
         self.re_file_name = f"files/{shortuuid.random(Settings.UUID_LEN)}_client.txt"
         self.reversed_file = open(self.re_file_name, "a")
 
+    # A utility function for sending initialization packet
     def _send_initialization(self):
         initialize = CustomPackets(PacketType.initialize)
         self.client.send(initialize.generate_packet_bytes(N=len(self.blocks_to_send)))
 
+    # A utility function for sending agreement packet
     def _confirm_agreement(self) -> bool:
         agreement = CustomPackets(PacketType.agreement)
         ack = self.client.recv(Settings.TYPE_NUM)
         return agreement.decode_from_bytes(ack)[0] == PacketType.agreement.value
 
+    # A utility function for sending actual text according to the randomly generated blocks
     def _send_raw_data(self):
         request_req = CustomPackets(PacketType.reverse_req)
         request_ans = CustomPackets(PacketType.reverse_ans)
@@ -86,12 +90,16 @@ class TCPClient:
     def run(self):
         print("Client starts")
         self._send_initialization()
-        if not self._confirm_agreement():
-            print("Server clearance is not granted.")
-            return
 
-        self._send_raw_data()
-        print(f"Reversed file stored under {self.re_file_name}")
+        self.client.settimeout(1)
+        try:
+            self._confirm_agreement()
+        except socket.timeout:
+            print("Server clearance is not granted. Closing this connection.")
+            self.client.close()
+        else:
+            self._send_raw_data()
+            print(f"Reversed file stored under {self.re_file_name}")
 
 
 if __name__ == "__main__":

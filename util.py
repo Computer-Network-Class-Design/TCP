@@ -24,11 +24,17 @@ We define the following 4 kinds of packets.
 """
 
 import argparse
+
 from enum import Enum
+from typing import Tuple
 from config import Settings
 
 
 class PacketType(Enum):
+    """
+    An enum class holding multiple types of packets
+    """
+
     initialize = 1
     agreement = 2
     reverse_req = 3
@@ -36,6 +42,10 @@ class PacketType(Enum):
 
 
 class CustomPackets:
+    """
+    This class is responsible for both encoding and decoding the above four types of packets
+    """
+
     @staticmethod
     def __format(val: int, length: int) -> str:
         str_val = str(val)
@@ -46,7 +56,7 @@ class CustomPackets:
         self.__type = packet_type
         self.packet_type = CustomPackets.__format(packet_type.value, Settings.TYPE_NUM)
 
-    def generate_packet_bytes(self, *, N=None, length=None, data=None):
+    def generate_packet_bytes(self, *, N=None, length=None, data=None) -> bytes:
         if self.__type == PacketType.initialize:
             msg_to_send = (
                 f"{self.packet_type}{CustomPackets.__format(N, Settings.LEN_OR_N)}"
@@ -61,8 +71,13 @@ class CustomPackets:
 
         return msg_to_send.encode(Settings.FORMAT)
 
-    def decode_from_bytes(self, data: bytes):
+    def decode_from_bytes(
+        self, data: bytes
+    ) -> Tuple[int] | Tuple[int, int] | Tuple[int, int, int]:
         decoded_data = data.decode(Settings.FORMAT)
+        if not decoded_data:
+            raise ConnectionAbortedError("Unexpected client exit")
+
         type_num = int(decoded_data[: Settings.TYPE_NUM])
 
         if self.__type == PacketType.agreement:

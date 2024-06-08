@@ -33,13 +33,19 @@ class TCPServer:
             info = conn.recv(
                 (Settings.TYPE_NUM + Settings.LEN_OR_N) + len(self.original_file)
             )
-            print(info)
-            _, length, data = reverse_req.decode_from_bytes(info)
-            reversed_data = data[::-1]
 
-            conn.send(
-                reverse_ans.generate_packet_bytes(length=length, data=reversed_data)
-            )
+            print(info)
+
+            try:
+                _, length, data = reverse_req.decode_from_bytes(info)
+            except ConnectionAbortedError as e:
+                print(str(e))
+                break
+            else:
+                reversed_data = data[::-1]
+                conn.send(
+                    reverse_ans.generate_packet_bytes(length=length, data=reversed_data)
+                )
 
     def _handle_client(self, conn: socket.socket):
         self._send_agreement(conn)
